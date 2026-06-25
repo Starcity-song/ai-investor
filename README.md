@@ -2,6 +2,8 @@
 
 一个 AI 副业想法验证工具。输入你的副业想法，AI 投资人会联网搜索竞品和市场数据，给出犀利的投资判断和建议。
 
+[![使用 EdgeOne Makers 部署](https://cdnstatic.tencentcs.com/edgeone/pages/deploy.svg)](https://console.cloud.tencent.com/edgeone/makers/new?repository-url=https%3A%2F%2Fgithub.com%2Fliyupi%2Fai-investor&env=WSA_API_KEY&env-description=%E8%81%94%E7%BD%91%E6%90%9C%E7%B4%A2%20API%20%E5%AF%86%E9%92%A5%EF%BC%88%E8%85%BE%E8%AE%AF%E4%BA%91%20WSAPI%EF%BC%89)
+
 ## 功能特点
 
 - **联网搜索**：自动搜索竞品、市场规模、融资案例
