@@ -64,11 +64,11 @@ export default function App() {
             );
           } else if (type === 'tool_call') {
             const toolName = data.name || '';
-            let statusText = '🔍 正在搜索...';
+            let statusText = '正在搜索...';
             if (toolName.includes('web_search')) {
-              statusText = '🌐 正在联网搜索竞品和市场信息...';
+              statusText = '正在联网搜索竞品和市场信息...';
             } else if (toolName.includes('browser')) {
-              statusText = '🖥️ 正在浏览网页...';
+              statusText = '正在浏览网页...';
             }
             setMessages(prev =>
               prev.map(m =>
@@ -78,14 +78,14 @@ export default function App() {
           } else if (type === 'tool_result') {
             setMessages(prev =>
               prev.map(m =>
-                m.id === assistantId ? { ...m, toolStatus: '✅ 搜索完成，正在分析...' } : m,
+                m.id === assistantId ? { ...m, toolStatus: '搜索完成，正在分析...' } : m,
               ),
             );
           } else if (type === 'error_message') {
             setMessages(prev =>
               prev.map(m =>
                 m.id === assistantId
-                  ? { ...m, content: m.content || `⚠️ 出错了：${data.content}`, toolStatus: undefined }
+                  ? { ...m, content: m.content || `出错了：${data.content}`, toolStatus: undefined }
                   : m,
               ),
             );
@@ -98,7 +98,7 @@ export default function App() {
         setMessages(prev =>
           prev.map(m =>
             m.id === assistantId
-              ? { ...m, content: m.content || `⚠️ 请求失败：${e.message}`, toolStatus: undefined }
+              ? { ...m, content: m.content || `请求失败：${e.message}`, toolStatus: undefined }
               : m,
           ),
         );

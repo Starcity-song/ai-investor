@@ -1,57 +1,36 @@
 import type { Message } from '../App';
 import { useMemo } from 'react';
+import { marked } from 'marked';
 
 interface ChatMessageProps {
   message: Message;
 }
 
-function simpleMarkdown(text: string): string {
-  let html = text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+});
 
-  // bold
-  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-  // italic
-  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-  // inline code
-  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-  // links
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-  // headers
-  html = html.replace(/^### (.+)$/gm, '<h4>$1</h4>');
-  html = html.replace(/^## (.+)$/gm, '<h3>$1</h3>');
-  html = html.replace(/^# (.+)$/gm, '<h2>$1</h2>');
-  // unordered list
-  html = html.replace(/^[-*] (.+)$/gm, '<li>$1</li>');
-  html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
-  // numbered list
-  html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
-  // paragraphs
-  html = html.replace(/\n\n/g, '</p><p>');
-  html = html.replace(/\n/g, '<br/>');
-  html = `<p>${html}</p>`;
-  // clean empty p
-  html = html.replace(/<p>\s*<\/p>/g, '');
-  html = html.replace(/<p>\s*(<h[234]>)/g, '$1');
-  html = html.replace(/(<\/h[234]>)\s*<\/p>/g, '$1');
-  html = html.replace(/<p>\s*(<ul>)/g, '$1');
-  html = html.replace(/(<\/ul>)\s*<\/p>/g, '$1');
-
-  return html;
+function renderMarkdown(text: string): string {
+  return marked.parse(text, { async: false }) as string;
 }
 
 export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === 'user';
   const renderedContent = useMemo(
-    () => (isUser ? null : simpleMarkdown(message.content)),
+    () => (isUser ? null : renderMarkdown(message.content)),
     [isUser, message.content],
   );
 
   return (
     <div className={`message ${isUser ? 'message-user' : 'message-assistant'}`}>
-      {!isUser && <div className="message-avatar">🤑</div>}
+      {!isUser && (
+        <div className="message-avatar assistant-avatar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+          </svg>
+        </div>
+      )}
       <div className={`message-bubble ${isUser ? 'bubble-user' : 'bubble-assistant'}`}>
         {message.toolStatus && (
           <div className="tool-status">
@@ -72,7 +51,14 @@ export function ChatMessage({ message }: ChatMessageProps) {
           </div>
         ) : null}
       </div>
-      {isUser && <div className="message-avatar user-avatar">😎</div>}
+      {isUser && (
+        <div className="message-avatar user-avatar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+        </div>
+      )}
     </div>
   );
 }

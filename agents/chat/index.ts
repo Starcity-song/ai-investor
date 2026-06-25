@@ -1,5 +1,4 @@
 import { run, Agent } from '@openai/agents';
-import type { Session } from '@openai/agents';
 import { createLogger, sseEvent, createSSEResponse } from '../_shared';
 import { buildModel } from '../_model';
 import { SYSTEM_PROMPT } from './_prompt';
@@ -31,6 +30,12 @@ function toSseEvent(e: any) {
   return null;
 }
 
+function resolveConversationId(context: any): string | undefined {
+  return context.conversation_id
+    || context.request?.headers?.['makers-conversation-id']
+    || undefined;
+}
+
 export async function onRequest(context: any) {
   const message = (context.request.body ?? {}).message as string | undefined;
   if (!message?.trim()) {
@@ -55,6 +60,10 @@ export async function onRequest(context: any) {
   }
 
   const tools = context.tools?.all() ?? [];
+  const conversationId = resolveConversationId(context);
+  const store = context.store;
+
+  logger.log('Request | conv:', conversationId, '| hasStore:', !!store, '| msg:', message.slice(0, 80));
 
   const agent = new Agent({
     name: 'AI投资人',
@@ -63,26 +72,54 @@ export async function onRequest(context: any) {
     model,
   });
 
-  const session: Session | undefined =
-    context.store && context.conversation_id
-      ? context.store.openaiSession(context.conversation_id)
-      : undefined;
+  let inputItems: any[] = [];
 
-  logger.log('New message:', message.slice(0, 100), '| conv:', context.conversation_id);
+  if (store && conversationId) {
+    try {
+      const history = await store.getMessages({
+        conversationId,
+        limit: 50,
+        order: 'asc',
+      });
+      if (history && history.length > 0) {
+        inputItems = store.toOpenAIInput(history);
+        logger.log('Loaded history:', history.length, 'messages');
+      }
+    } catch (e) {
+      logger.error('Failed to load history:', (e as Error).message);
+    }
+
+    try {
+      await store.appendMessage({
+        conversationId,
+        role: 'user',
+        content: message.trim(),
+      });
+    } catch (e) {
+      logger.error('Failed to save user message:', (e as Error).message);
+    }
+  }
+
+  inputItems.push({ role: 'user', content: message.trim() });
 
   return createSSEResponse(
     async function* () {
+      let fullContent = '';
       try {
-        const result = await run(agent, message, {
+        const result = await run(agent, inputItems, {
           stream: true,
           signal,
-          session,
-          maxTurns: 6,
+          maxTurns: 12,
         });
         for await (const event of result.toStream()) {
           if (signal?.aborted) break;
           const sse = toSseEvent(event);
-          if (sse) yield sseEvent({ type: sse.event, ...sse.data });
+          if (sse) {
+            if (sse.event === 'ai_response' && sse.data.content) {
+              fullContent += sse.data.content;
+            }
+            yield sseEvent({ type: sse.event, ...sse.data });
+          }
         }
       } catch (e) {
         const err = e as Error;
@@ -90,6 +127,18 @@ export async function onRequest(context: any) {
         if (err.message?.includes('terminated') && signal?.aborted) return;
         logger.error('Stream error:', err.message);
         yield sseEvent({ type: 'error_message', content: err.message });
+      } finally {
+        if (store && conversationId && fullContent) {
+          try {
+            await store.appendMessage({
+              conversationId,
+              role: 'assistant',
+              content: fullContent,
+            });
+          } catch (e) {
+            logger.error('Failed to save assistant message:', (e as Error).message);
+          }
+        }
       }
     },
     signal,
